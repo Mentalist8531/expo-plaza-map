@@ -12,8 +12,18 @@
     <!-- 방금 깃허브에 올리신 map.jpg 파일을 불러옵니다 -->
     <img src="map.jpg" style="width: 100%; display: block;" alt="시민광장 조감도">
     
-    <!-- 내 위치를 표시할 빨간 마커 -->
-    <div id="my-location" style="position: absolute; width: 16px; height: 16px; background-color: #ff3b30; border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.5); transform: translate(-50%, -50%); display: none; z-index: 10;"></div>
+    <!-- 날카롭고 직관적인 핀 형태의 마커 -->
+<div id="my-location" style="
+    position: absolute; 
+    width: 24px; 
+    height: 24px; 
+    background-image: url('data:image/svg+xml;utf8,<svg viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z\' fill=\'%23ff3b30\' stroke=\'white\' stroke-width=\'1.5\'/></svg>'); 
+    background-repeat: no-repeat;
+    /* translate(-50%, -100%)를 통해 핀의 가장 아래쪽 뾰족한 끝이 정확한 좌표에 닿도록 정렬합니다 */
+    transform: translate(-50%, -100%); 
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+    display: none; 
+    z-index: 10;">
 </div>
 
 <script>
