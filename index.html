@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시민광장 현재 위치 안내</title>
+</head>
+<body style="margin: 0; background-color: #1a1a1a;">
+
+<div style="position: relative; width: 100%; max-width: 800px; margin: 0 auto; overflow: hidden;">
+    
+    <!-- 방금 깃허브에 올리신 map.jpg 파일을 불러옵니다 -->
+    <img src="map.jpg" style="width: 100%; display: block;" alt="시민광장 조감도">
+    
+    <!-- 내 위치를 표시할 빨간 마커 -->
+    <div id="my-location" style="position: absolute; width: 16px; height: 16px; background-color: #ff3b30; border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.5); transform: translate(-50%, -50%); display: none; z-index: 10;"></div>
+</div>
+
+<script>
+(function() {
+    // 주의: 현장에 가셔서 구글 지도로 4개 모서리의 실제 위도/경도를 측정해 이 숫자를 바꿔주셔야 정확히 맞습니다!
+    const corners = {
+        nw: { lat: 36.369500, lng: 127.383500 }, // 좌측 상단 (북서)
+        ne: { lat: 36.369500, lng: 127.387500 }, // 우측 상단 (북동)
+        se: { lat: 36.365000, lng: 127.387500 }, // 우측 하단 (남동)
+        sw: { lat: 36.365000, lng: 127.383500 }  // 좌측 하단 (남서)
+    };
+
+    const marker = document.getElementById('my-location');
+
+    function calculatePosition(currentLat, currentLng) {
+        const minLng = Math.min(corners.nw.lng, corners.sw.lng);
+        const maxLng = Math.max(corners.ne.lng, corners.se.lng);
+        const minLat = Math.min(corners.se.lat, corners.sw.lat);
+        const maxLat = Math.max(corners.nw.lat, corners.ne.lat);
+
+        if(currentLng < minLng || currentLng > maxLng || currentLat < minLat || currentLat > maxLat) {
+            return null; 
+        }
+
+        const xRatio = (currentLng - minLng) / (maxLng - minLng);
+        const yRatio = (maxLat - currentLat) / (maxLat - minLat);
+
+        const topX = (1 - xRatio) * 0 + xRatio * 100;
+        const bottomX = (1 - xRatio) * 0 + xRatio * 100; 
+        
+        const finalX = (1 - yRatio) * topX + yRatio * bottomX;
+        const finalY = yRatio * 100;
+
+        return { x: finalX, y: finalY };
+    }
+
+    if (navigator.geolocation) {
+        navigator.geolocation.watchPosition(
+            function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const mapPos = calculatePosition(lat, lng);
+                
+                if (mapPos) {
+                    marker.style.left = mapPos.x + '%';
+                    marker.style.top = mapPos.y + '%';
+                    marker.style.display = 'block';
+                } else {
+                    marker.style.display = 'none';
+                }
+            },
+            function(error) { console.log("위치 추적 실패: ", error); },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+        );
+    }
+})();
+</script>
+
+</body>
+</html>
