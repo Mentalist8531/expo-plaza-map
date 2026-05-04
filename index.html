@@ -80,6 +80,15 @@
         );
     }
 })();
+
+// 화면을 클릭하면 해당 지점의 X, Y 퍼센트(%)를 콘솔창과 알림창으로 띄워주는 디버깅 툴
+    document.querySelector('img').addEventListener('click', function(e) {
+        const rect = e.target.getBoundingClientRect();
+        const xPos = ((e.clientX - rect.left) / rect.width) * 100;
+        const yPos = ((e.clientY - rect.top) / rect.height) * 100;
+        alert(`클릭한 위치: X: ${xPos.toFixed(2)}%, Y: ${yPos.toFixed(2)}%`);
+    });    
+    
 </script>
 
 </body>
