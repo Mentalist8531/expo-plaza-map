@@ -15,8 +15,8 @@
     <!-- 날카롭고 직관적인 핀 형태의 마커 -->
 <div id="my-location" style="
     position: absolute; 
-    width: 16px; 
-    height: 16px; 
+    width: 10px; 
+    height: 10px; 
     background-image: url('data:image/svg+xml;utf8,<svg viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z\' fill=\'%23ff3b30\' stroke=\'white\' stroke-width=\'1.5\'/></svg>'); 
     background-repeat: no-repeat;
     /* translate(-50%, -100%)를 통해 핀의 가장 아래쪽 뾰족한 끝이 정확한 좌표에 닿도록 정렬합니다 */
@@ -30,10 +30,10 @@
 (function() {
     // 주의: 현장에 가셔서 구글 지도로 4개 모서리의 실제 위도/경도를 측정해 이 숫자를 바꿔주셔야 정확히 맞습니다!
     const corners = {
-        nw: { lat: 36.374251, lng: 127.381470 }, // 좌측 상단 (북서)
-        ne: { lat: 36.373945, lng: 127.395470 }, // 우측 상단 (북동)
+        nw: { lat: 36.374280, lng: 127.381490 }, // 좌측 상단 (북서)
+        ne: { lat: 36.373945, lng: 127.395490 }, // 우측 상단 (북동)
         se: { lat: 36.364745, lng: 127.393493 }, // 우측 하단 (남동)
-        sw: { lat: 36.364751, lng: 127.382793 }  // 좌측 하단 (남서)
+        sw: { lat: 36.364780, lng: 127.382793 }  // 좌측 하단 (남서)
     };
 
     const marker = document.getElementById('my-location');
