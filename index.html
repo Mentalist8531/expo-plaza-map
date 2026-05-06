@@ -3,104 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>시민광장 현재 위치 안내</title>
+    <title>엑스포시민광장 GPS 정밀 보정 시스템</title>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            background-color: #1a1a1a; 
-            display: flex; 
-            justify-content: center; 
-        }
-        .map-container { 
-            position: relative; 
-            width: 100%; 
-            max-width: 800px; 
-            overflow: hidden; 
-        }
-        .map-image { 
-            width: 100%; 
-            display: block; 
-        }
-        /* 새롭게 적용된 뾰족한 핀 형태의 마커 디자인 */
+        body { margin: 0; padding: 20px; background-color: #1a1a1a; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+        
+        /* 맵 컨테이너 */
+        .map-wrapper { position: relative; width: 100%; max-width: 1000px; border: 2px solid #444; cursor: crosshair; overflow: hidden; }
+        .map-image { width: 100%; display: block; -webkit-user-drag: none; }
+
+        /* 📍 내 실시간 위치 핀 */
         #my-location {
-            position: absolute; 
-            width: 28px; 
-            height: 28px; 
-            background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="%23ff3b30" stroke="white" stroke-width="1.5"/></svg>'); 
-            background-repeat: no-repeat;
-            transform: translate(-50%, -100%); /* 핀의 뾰족한 끝부분이 정확한 좌표를 가리키도록 정렬 */
-            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
-            display: none; 
-            z-index: 10;
+            position: absolute; width: 30px; height: 30px;
+            background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="%2300ff00" stroke="black" stroke-width="1.5"/></svg>');
+            background-repeat: no-repeat; transform: translate(-50%, -100%);
+            display: none; z-index: 100; transition: all 0.5s ease;
         }
+
+        /* 십자 축 (클릭 시 노출) */
+        .axis { position: absolute; background-color: rgba(255, 255, 0, 0.6); pointer-events: none; display: none; z-index: 50; }
+        .axis-x { height: 1px; width: 100%; left: 0; }
+        .axis-y { width: 1px; height: 100%; top: 0; }
+
+        /* 보정 데이터 패널 */
+        .panel { width: 100%; max-width: 1000px; margin-top: 20px; background: #2a2a2a; padding: 15px; border-radius: 8px; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #444; padding: 8px; text-align: center; }
+        th { background: #333; }
+        .debug-info { color: #00ff00; font-family: monospace; margin-top: 10px; background: #000; padding: 10px; }
     </style>
 </head>
 <body>
 
-<div class="map-container">
-    <!-- 업로드하신 조감도 이미지 -->
-    <img src="map.jpg" class="map-image" alt="시민광장 조감도">
+    <h3>📍 엑스포시민광장 수직 맵 좌표 보정</h3>
     
-    <!-- 내 위치를 표시할 마커 -->
-    <div id="my-location"></div>
-</div>
+    <div class="map-wrapper" id="map-container">
+        <img src="map.png" class="map-image" id="map-img">
+        <div id="my-location"></div>
+        <div id="axis-x" class="axis axis-x"></div>
+        <div id="axis-y" class="axis axis-y"></div>
+    </div>
+
+    <div class="panel">
+        <strong>[보정 방법]</strong> 지도 위를 클릭하면 노란색 축이 나옵니다. 해당 위치의 실제 GPS 위도/경도를 입력해 주세요.
+        <table id="calib-table">
+            <thead>
+                <tr>
+                    <th>지점</th>
+                    <th>Map X (%)</th>
+                    <th>Map Y (%)</th>
+                    <th>Latitude</th>
+                    <th>Longitude</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div id="status" class="debug-info">보정 데이터를 기다리는 중...</div>
+    </div>
 
 <script>
 (function() {
-    // 측정해주신 기준점 A, B를 바탕으로 완벽하게 계산된 4면 모서리 좌표
-    const corners = {
-        nw: { lat: 36.371818, lng: 127.382459 }, // 북서
-        ne: { lat: 36.371818, lng: 127.393943 }, // 북동
-        se: { lat: 36.364615, lng: 127.393943 }, // 남동
-        sw: { lat: 36.364615, lng: 127.382459 }  // 남서
-    };
-
+    const container = document.getElementById('map-container');
+    const img = document.getElementById('map-img');
     const marker = document.getElementById('my-location');
+    const axisX = document.getElementById('axis-x');
+    const axisY = document.getElementById('axis-y');
+    const tableBody = document.querySelector('#calib-table tbody');
+    const status = document.getElementById('status');
 
-    function calculatePosition(currentLat, currentLng) {
-        const minLng = Math.min(corners.nw.lng, corners.sw.lng);
-        const maxLng = Math.max(corners.ne.lng, corners.se.lng);
-        const minLat = Math.min(corners.se.lat, corners.sw.lat);
-        const maxLat = Math.max(corners.nw.lat, corners.ne.lat);
+    let calibPoints = [];
 
-        if(currentLng < minLng || currentLng > maxLng || currentLat < minLat || currentLat > maxLat) {
-            return null; 
+    // 1. 맵 클릭 이벤트 (축 표시 및 보정 데이터 수집)
+    container.addEventListener('click', function(e) {
+        const rect = img.getBoundingClientRect();
+        const xPercent = ((e.clientX - rect.left) / rect.width * 100).toFixed(2);
+        const yPercent = ((e.clientY - rect.top) / rect.height * 100).toFixed(2);
+
+        // 축 위치 업데이트
+        axisX.style.top = yPercent + '%';
+        axisY.style.left = xPercent + '%';
+        axisX.style.display = 'block';
+        axisY.style.display = 'block';
+
+        // GPS 입력 받기
+        const lat = prompt(`클릭 지점(${xPercent}%, ${yPercent}%)의 위도(Lat)를 입력하세요:`);
+        if (!lat) return;
+        const lng = prompt(`클릭 지점(${xPercent}%, ${yPercent}%)의 경도(Lng)를 입력하세요:`);
+        if (!lng) return;
+
+        const point = { x: parseFloat(xPercent), y: parseFloat(yPercent), lat: parseFloat(lat), lng: parseFloat(lng) };
+        calibPoints.push(point);
+        updateUI();
+    });
+
+    function updateUI() {
+        tableBody.innerHTML = '';
+        calibPoints.forEach((p, i) => {
+            tableBody.innerHTML += `<tr><td>${i+1}</td><td>${p.x}%</td><td>${p.y}%</td><td>${p.lat}</td><td>${p.lng}</td></tr>`;
+        });
+
+        if (calibPoints.length >= 2) {
+            status.innerHTML = "✅ 보정 준비 완료! 실시간 GPS가 지도 위에 표시됩니다.";
         }
-
-        const xRatio = (currentLng - minLng) / (maxLng - minLng);
-        const yRatio = (maxLat - currentLat) / (maxLat - minLat);
-
-        const topX = (1 - xRatio) * 0 + xRatio * 100;
-        const bottomX = (1 - xRatio) * 0 + xRatio * 100; 
-        
-        const finalX = (1 - yRatio) * topX + yRatio * bottomX;
-        const finalY = yRatio * 100;
-
-        return { x: finalX, y: finalY };
     }
 
+    // 2. 좌표 변환 로직 (수직 맵 전용 선형 매핑)
+    function getMapPos(currentLat, currentLng) {
+        if (calibPoints.length < 2) return null;
+
+        // 가장 멀리 떨어진 두 점(첫 점과 마지막 점)을 기준으로 비례식 계산
+        const p1 = calibPoints[0];
+        const p2 = calibPoints[calibPoints.length - 1];
+
+        // 경도(Lng) -> X% 매핑
+        const x = p1.x + (currentLng - p1.lng) * (p2.x - p1.x) / (p2.lng - p1.lng);
+        // 위도(Lat) -> Y% 매핑
+        const y = p1.y + (currentLat - p1.lat) * (p2.y - p1.y) / (p2.lat - p1.lat);
+
+        return { x, y };
+    }
+
+    // 3. 실시간 GPS 추적
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
-            function(position) {
-                const lat = position.coords.latitude;
-                const lng = position.coords.longitude;
-                const mapPos = calculatePosition(lat, lng);
-                
+            function(pos) {
+                const mapPos = getMapPos(pos.coords.latitude, pos.coords.longitude);
                 if (mapPos) {
                     marker.style.left = mapPos.x + '%';
                     marker.style.top = mapPos.y + '%';
                     marker.style.display = 'block';
-                } else {
-                    marker.style.display = 'none'; 
+                    console.log(`GPS: ${pos.coords.latitude}, ${pos.coords.longitude} -> Map: ${mapPos.x}%, ${mapPos.y}%`);
                 }
             },
-            function(error) { console.log("위치 추적 실패: ", error); },
+            (err) => console.warn(err),
             { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
         );
     }
 })();
 </script>
-
 </body>
 </html>
