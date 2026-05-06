@@ -1,150 +1,58 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>시민광장 현재 위치 안내 (원근 보정 적용)</title>
-</head>
-<body style="margin: 0; background-color: #1a1a1a;">
-
-<div style="position: relative; width: 100%; max-width: 800px; margin: 0 auto; overflow: hidden;">
-    <!-- 조감도 이미지 -->
-    <img src="map.jpg" style="width: 100%; display: block;" alt="시민광장 조감도">
-    
-    <!-- 위치 마커 -->
-    <div id="my-location" style="
-        position: absolute; 
-        width: 10px; 
-        height: 10px; 
-        background-image: url('data:image/svg+xml;utf8,<svg viewBox=\'0 0 24 24\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z\' fill=\'%23ff3b30\' stroke=\'white\' stroke-width=\'1.5\'/></svg>'); 
-        background-repeat: no-repeat;
-        transform: translate(-50%, -100%); 
-        filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
-        display: none; 
-        z-index: 10;">
-    </div>
-</div>
-
 <script>
 (function() {
-    // ============================================================================
-    // [설정 파트] 4개의 랜드마크 기준점을 설정하세요. (매우 중요)
-    // 조감도 상에서 식별 가능한 4곳의 명확한 점을 정합니다. (예: 특정 건물의 모서리, 교차로 등)
-    // 1. 구글 지도에서 해당 위치의 실제 위도/경도를 찾습니다.
-    // 2. 만드신 '화면 클릭 디버깅 툴'로 조감도 상의 X, Y 퍼센트(%)를 찾습니다.
-    // ============================================================================
-    const calibrationPoints = [
-        // 예시: 좌상단, 우상단, 좌하단, 우하단의 특정 지점 4곳 (직사각형일 필요 없음, 임의의 4점)
-        { gps: { lat: 36.374022, lng: 127.381221 }, img: { x: 10.5, y: 15.2 } }, // 포인트 1
-        { gps: { lat: 36.373747, lng: 127.395221 }, img: { x: 89.1, y: 18.5 } }, // 포인트 2
-        { gps: { lat: 36.364547, lng: 127.393504 }, img: { x: 92.0, y: 85.0 } }, // 포인트 3
-        { gps: { lat: 36.364022, lng: 127.382804 }, img: { x: 8.0,  y: 82.3 } }  // 포인트 4
-    ];
+    // 송범섭님이 직접 측정해주신 기준점 A, B를 바탕으로 완벽하게 계산된 4면 모서리 좌표입니다.
+    const corners = {
+        nw: { lat: 36.371818, lng: 127.382459 }, // 좌측 상단 (북서)
+        ne: { lat: 36.371818, lng: 127.393943 }, // 우측 상단 (북동)
+        se: { lat: 36.364615, lng: 127.393943 }, // 우측 하단 (남동)
+        sw: { lat: 36.364615, lng: 127.382459 }  // 좌측 하단 (남서)
+    };
 
-    // ============================================================================
-    // [엔진 파트] 원근 투영(Homography) 매트릭스 계산기
-    // ============================================================================
-    function createPerspectiveTransform(points) {
-        // GPS 좌표계를 평면 좌표계로 변환 (간이 투영)
-        let src = points.map(p => [p.gps.lng, p.gps.lat]);
-        let dst = points.map(p => [p.img.x, p.img.y]);
-
-        // 가우스 소거법을 이용한 8x8 행렬 풀이
-        let a = [];
-        for (let i = 0; i < 4; i++) {
-            a.push([src[i][0], src[i][1], 1, 0, 0, 0, -src[i][0] * dst[i][0], -src[i][1] * dst[i][0], dst[i][0]]);
-            a.push([0, 0, 0, src[i][0], src[i][1], 1, -src[i][0] * dst[i][1], -src[i][1] * dst[i][1], dst[i][1]]);
-        }
-
-        let h = solveMatrix(a);
-        
-        return function(lat, lng) {
-            let x = h[0] * lng + h[1] * lat + h[2];
-            let y = h[3] * lng + h[4] * lat + h[5];
-            let w = h[6] * lng + h[7] * lat + 1;
-            return { x: x / w, y: y / w };
-        };
-    }
-
-    function solveMatrix(a) {
-        let n = 8;
-        for (let i = 0; i < n; i++) {
-            let maxEl = Math.abs(a[i][i]);
-            let maxRow = i;
-            for (let k = i + 1; k < n; k++) {
-                if (Math.abs(a[k][i]) > maxEl) {
-                    maxEl = Math.abs(a[k][i]);
-                    maxRow = k;
-                }
-            }
-            for (let k = i; k < n + 1; k++) {
-                let tmp = a[maxRow][k];
-                a[maxRow][k] = a[i][k];
-                a[i][k] = tmp;
-            }
-            for (let k = i + 1; k < n; k++) {
-                let c = -a[k][i] / a[i][i];
-                for (let j = i; j < n + 1; j++) {
-                    if (i == j) { a[k][j] = 0; } 
-                    else { a[k][j] += c * a[i][j]; }
-                }
-            }
-        }
-        let x = new Array(n).fill(0);
-        for (let i = n - 1; i > -1; i--) {
-            x[i] = a[i][n] / a[i][i];
-            for (let k = i - 1; k > -1; k--) {
-                a[k][n] -= a[k][i] * x[i];
-            }
-        }
-        return x;
-    }
-
-    // 변환 함수 생성
-    let transform;
-    try {
-        transform = createPerspectiveTransform(calibrationPoints);
-    } catch(e) {
-        console.error("매트릭스 계산 실패. 설정 파트의 좌표값을 확인하세요.", e);
-    }
-
-    // ============================================================================
-    // [실행 파트] GPS 추적 및 마커 렌더링
-    // ============================================================================
     const marker = document.getElementById('my-location');
 
-    if (navigator.geolocation && transform) {
+    // 위치를 퍼센트(%)로 변환하는 함수
+    function calculatePosition(currentLat, currentLng) {
+        const minLng = Math.min(corners.nw.lng, corners.sw.lng);
+        const maxLng = Math.max(corners.ne.lng, corners.se.lng);
+        const minLat = Math.min(corners.se.lat, corners.sw.lat);
+        const maxLat = Math.max(corners.nw.lat, corners.ne.lat);
+
+        // 현재 위치가 광장 바깥인지 체크
+        if(currentLng < minLng || currentLng > maxLng || currentLat < minLat || currentLat > maxLat) {
+            return null; 
+        }
+
+        const xRatio = (currentLng - minLng) / (maxLng - minLng);
+        const yRatio = (maxLat - currentLat) / (maxLat - minLat);
+
+        const topX = (1 - xRatio) * 0 + xRatio * 100;
+        const bottomX = (1 - xRatio) * 0 + xRatio * 100; 
+        
+        const finalX = (1 - yRatio) * topX + yRatio * bottomX;
+        const finalY = yRatio * 100;
+
+        return { x: finalX, y: finalY };
+    }
+
+    // GPS 위치 추적 실행
+    if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
             function(position) {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
+                const mapPos = calculatePosition(lat, lng);
                 
-                // 역산된 X, Y 퍼센트 좌표를 가져옴
-                const mapPos = transform(lat, lng);
-                
-                // 지도를 벗어난 경우 (0~100% 범위를 약간 넘는 여백 허용)
-                if (mapPos.x >= -5 && mapPos.x <= 105 && mapPos.y >= -5 && mapPos.y <= 105) {
+                if (mapPos) {
                     marker.style.left = mapPos.x + '%';
                     marker.style.top = mapPos.y + '%';
                     marker.style.display = 'block';
                 } else {
-                    marker.style.display = 'none'; // 범위를 벗어나면 숨김
+                    marker.style.display = 'none'; // 범위를 벗어나면 마커 숨김
                 }
             },
             function(error) { console.log("위치 추적 실패: ", error); },
             { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
         );
     }
-
-    // 화면 클릭 디버깅 툴 (기존과 동일)
-    document.querySelector('img').addEventListener('click', function(e) {
-        const rect = e.target.getBoundingClientRect();
-        const xPos = ((e.clientX - rect.left) / rect.width) * 100;
-        const yPos = ((e.clientY - rect.top) / rect.height) * 100;
-        alert(`클릭한 위치: img: { x: ${xPos.toFixed(2)}, y: ${yPos.toFixed(2)} }`);
-    });   
 })();
 </script>
-
-</body>
-</html>
