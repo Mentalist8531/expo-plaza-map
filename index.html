@@ -1,23 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>시민광장 현재 위치 안내</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            background-color: #1a1a1a; 
+            display: flex; 
+            justify-content: center; 
+        }
+        .map-container { 
+            position: relative; 
+            width: 100%; 
+            max-width: 800px; 
+            overflow: hidden; 
+        }
+        .map-image { 
+            width: 100%; 
+            display: block; 
+        }
+        /* 새롭게 적용된 뾰족한 핀 형태의 마커 디자인 */
+        #my-location {
+            position: absolute; 
+            width: 28px; 
+            height: 28px; 
+            background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="%23ff3b30" stroke="white" stroke-width="1.5"/></svg>'); 
+            background-repeat: no-repeat;
+            transform: translate(-50%, -100%); /* 핀의 뾰족한 끝부분이 정확한 좌표를 가리키도록 정렬 */
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+            display: none; 
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+<div class="map-container">
+    <!-- 업로드하신 조감도 이미지 -->
+    <img src="map.jpg" class="map-image" alt="시민광장 조감도">
+    
+    <!-- 내 위치를 표시할 마커 -->
+    <div id="my-location"></div>
+</div>
+
 <script>
 (function() {
-    // 송범섭님이 직접 측정해주신 기준점 A, B를 바탕으로 완벽하게 계산된 4면 모서리 좌표입니다.
+    // 측정해주신 기준점 A, B를 바탕으로 완벽하게 계산된 4면 모서리 좌표
     const corners = {
-        nw: { lat: 36.371818, lng: 127.382459 }, // 좌측 상단 (북서)
-        ne: { lat: 36.371818, lng: 127.393943 }, // 우측 상단 (북동)
-        se: { lat: 36.364615, lng: 127.393943 }, // 우측 하단 (남동)
-        sw: { lat: 36.364615, lng: 127.382459 }  // 좌측 하단 (남서)
+        nw: { lat: 36.371818, lng: 127.382459 }, // 북서
+        ne: { lat: 36.371818, lng: 127.393943 }, // 북동
+        se: { lat: 36.364615, lng: 127.393943 }, // 남동
+        sw: { lat: 36.364615, lng: 127.382459 }  // 남서
     };
 
     const marker = document.getElementById('my-location');
 
-    // 위치를 퍼센트(%)로 변환하는 함수
     function calculatePosition(currentLat, currentLng) {
         const minLng = Math.min(corners.nw.lng, corners.sw.lng);
         const maxLng = Math.max(corners.ne.lng, corners.se.lng);
         const minLat = Math.min(corners.se.lat, corners.sw.lat);
         const maxLat = Math.max(corners.nw.lat, corners.ne.lat);
 
-        // 현재 위치가 광장 바깥인지 체크
         if(currentLng < minLng || currentLng > maxLng || currentLat < minLat || currentLat > maxLat) {
             return null; 
         }
@@ -34,7 +80,6 @@
         return { x: finalX, y: finalY };
     }
 
-    // GPS 위치 추적 실행
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(
             function(position) {
@@ -47,7 +92,7 @@
                     marker.style.top = mapPos.y + '%';
                     marker.style.display = 'block';
                 } else {
-                    marker.style.display = 'none'; // 범위를 벗어나면 마커 숨김
+                    marker.style.display = 'none'; 
                 }
             },
             function(error) { console.log("위치 추적 실패: ", error); },
@@ -56,3 +101,6 @@
     }
 })();
 </script>
+
+</body>
+</html>
